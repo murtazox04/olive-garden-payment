@@ -1,16 +1,17 @@
 from fastapi import FastAPI
-from starlette.routing import Route
 from piccolo.engine import engine_finder
 
-from kafka_subscribers import router
-from core.endpoints import AuthEndpoint
+# from kafka_subscribers import router
+from core.endpoints import auth_router, geolocation_router
 
 app = FastAPI(
     title="OliveGarden Auth Service",
-    lifespan=router.lifespan_context
+    # lifespan=router.lifespan_context
 )
-app.include_router(router)
-app.include_router(AuthEndpoint(), prefix="/api/v1/auth")
+# app.include_router(router)
+app.include_router(auth_router, prefix="/api/v1/auth")
+app.include_router(geolocation_router, prefix="/api/v1/user")
+
 
 @app.on_event("startup")
 async def open_database_connection_pool():

@@ -1,17 +1,12 @@
-import typing
-from fastapi import APIRouter, HTTPException, status
-from piccolo_api.crud.serializers import create_pydantic_model
+from fastapi import APIRouter, HTTPException
 
-from app import router
+# from app import router
 from .tables import User, UserGeolocation
-
-
-UserCreateIn: typing.Any = create_pydantic_model(table=User, model_name="UserCreateIn")
-UserCreatedOut: typing.Any = create_pydantic_model(
-    table=User, include_default_columns=True, model_name="UserCreateOut")
-GeolocationIn: typing.Any = create_pydantic_model(table=UserGeolocation, model_name="GeolocationIn")
-GeolocationOut: typing.Any = create_pydantic_model(
-    table=UserGeolocation, include_default_columns=True, model_name="GeolocationOut")
+from .dto.auth import (
+    LoginRequest, VerificationRequest, TokenResponse
+)
+from .dto.user import GeolocationIn, GeolocationOut
+from .utils import send_verification_code, check_phone
 
 
 class AuthEndpoint(APIRouter):
@@ -19,25 +14,78 @@ class AuthEndpoint(APIRouter):
         super().__init__(*args, **kwargs)
         self.tags = ['User Authentication']
         self.add_api_route(
-            "login",
-            endpoint=self.login_user,
-            methods=["POST"]
+            "/login",
+            endpoint=self.login,
+            methods=["POST"],
+            response_model=TokenResponse
         )
         self.add_api_route(
-            "/user/{telegram_id}/geolocation",
-            endpoint=self.create_geolocation,
+            "/login/{token:str}/verify",
+            endpoint=self.verify,
+            methods=["POST"],
+            response_model=TokenResponse
+        )
+        self.add_api_route(
+            "/login/refresh",
+            endpoint=self.token_refresh,
+            methods=["POST"],
+            response_model=TokenResponse
+        )
+        self.add_api_route(
+            "/logout",
+            endpoint=self.logout,
+            methods=["POST"]
+        )
+
+    async def login(self, request: LoginRequest):
+        phone_number = request.phone_number
+
+        # phone number validation
+        if not await check_phone(phone_number):
+            raise HTTPException(status_code=400, detail="Invalid phone number")
+
+        # send verification code
+        user = User(username=phone_number, phone_number=phone_number)
+        code = await user.create_verify_code()
+        await user.save()
+        await send_verification_code(code, phone_number)
+
+    async def verify(self, token: str, request: VerificationRequest):
+        ...
+
+    async def token_refresh(self):
+        ...
+
+    async def logout(self):
+        ...
+
+
+class UserGeolocationEndpoint(APIRouter):
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self.tags = ['User Geolocation']
+        self.add_api_route(
+            "/{telegram_id}/geolocation",
+            endpoint=self.create,
             response_model=GeolocationOut,
             methods=["POST"],
             tags=["User Geolocation"]
         )
 
-    async def create_geolocation(self, payload: GeolocationIn):
-        geolocation = UserGeolocation(**payload.dict())
+    async def create(
+            self,
+            request: GeolocationIn
+    ):
+        geolocation = UserGeolocation(**request.dict())
         await geolocation.save()
-        return geolocation.to_dict()
+        data = geolocation.to_dict()
+        # await router.broker.publish(
+        #     data,
+        #     "main-topic",
+        #     key="geolocation_created",
+        # )
+        return data
 
-    async def login_user(self, phone_number: str):
-        user = await User.objects().get(User.phone_number == phone_number)
-        if user is None:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
 
+auth_router = AuthEndpoint()
+geolocation_router = UserGeolocationEndpoint()
