@@ -45,16 +45,3 @@ class User(BaseUser, tablename="piccolo_user"):
 
     async def tokens(self) -> dict:
         ...
-
-
-class UserGeolocation(Table):
-    """
-    User geolocation table.
-    """
-
-    user = ForeignKey(references=User)
-    lat = Float()
-    lng = Float()
-    reference_point = Text()
-    created_at = Timestamp(default=TimestampNow(), null=True)
-    updated_at = Timestamp(auto_update=TimestampNow(), null=True)

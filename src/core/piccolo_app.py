@@ -1,5 +1,5 @@
 """
-Import all of the Tables subclasses in your core here, and register them with
+Import all of the Tables subclasses in your app here, and register them with
 the APP_CONFIG.
 """
 
