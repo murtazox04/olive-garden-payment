@@ -1,11 +1,8 @@
 from fastapi import APIRouter
 
 # from app import router
-from src.core.tables import UserGeolocation
-from src.core.dto.auth import (
-    LoginRequest, VerificationRequest, TokenResponse
-)
-from src.core.dto import GeolocationIn, GeolocationOut
+from src.api.tables import UserGeolocation
+from src.api.dto import GeolocationIn, GeolocationOut
 
 
 class UserGeolocationEndpoint(APIRouter):

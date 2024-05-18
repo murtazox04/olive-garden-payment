@@ -1,11 +1,9 @@
 import random
-import typing as t
 from datetime import datetime, timedelta
 from piccolo.table import Table
-from piccolo.query import Insert, Update
 from piccolo.apps.user.tables import BaseUser
 from piccolo.columns.defaults.timestamp import TimestampNow
-from piccolo.columns import Varchar, BigInt, Float, Boolean, Text, Timestamp, ForeignKey, Column
+from piccolo.columns import Varchar, BigInt, Boolean, Timestamp, ForeignKey
 
 
 class UserConfirmation(Table):
@@ -13,18 +11,27 @@ class UserConfirmation(Table):
     User Confirmation table.
     """
 
-    id: BigInt(primary_key=True)
     code = Varchar(length=6)
     user = ForeignKey("piccolo_user")
-    expiration_time = Timestamp(null=True)
+    expiration_time = Timestamp(null=True, default=datetime.now() + timedelta(minutes=3))
     is_confirmed = Boolean()
 
-    def save(
-            self, columns: t.Optional[t.Sequence[t.Union[Column, str]]] = None
-    ) -> t.Union[Insert, Update]:
-        if not self.id:
-            self.expiration_time = datetime.now() + timedelta(minutes=3)
-        return super(UserConfirmation, self).save(columns=columns)
+    @classmethod
+    async def mark_as_confirmed(cls, instance):
+        """
+        Marks the confirmation code as confirmed.
+        """
+        instance.is_confirmed = True
+        await instance.save()
+
+    @classmethod
+    def is_expired(cls, instance) -> bool:
+        """
+        Checks if the confirmation code has expired.
+        """
+        if instance.expiration_time is not None:
+            return datetime.now() > instance.expiration_time
+        return False
 
 
 class User(BaseUser, tablename="piccolo_user"):
@@ -38,10 +45,7 @@ class User(BaseUser, tablename="piccolo_user"):
     date_joined = Timestamp(default=TimestampNow(), null=True)
 
     async def create_verify_code(self) -> str:
-        code = "".join([str(random.randint(0, 100) % 10) for _ in range(6)])
+        code = "".join([str(random.randint(0, 9)) for _ in range(6)])  # Generate a 6-digit random code
         confirmation = UserConfirmation(user=self, code=code)
         await confirmation.save()
         return code
-
-    async def tokens(self) -> dict:
-        ...

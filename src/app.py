@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from piccolo.engine import engine_finder
 from faststream.kafka.fastapi import KafkaRouter
 
-from core.endpoints import auth_router, geolocation_router
+from api.endpoints import auth_router, geolocation_router
 
 router = KafkaRouter("localhost:9092")
 app = FastAPI(

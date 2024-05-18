@@ -11,7 +11,7 @@ pip install -r requirements.txt
 ### Getting started guide
 
 ```bash
-python main.py
+python __main__.py
 ```
 
 ### Running tests

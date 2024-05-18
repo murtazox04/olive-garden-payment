@@ -1,5 +1,5 @@
 from app import router
-from core.tables import User
+from api.tables import User
 
 
 @router.subscriber("auth-topic", group_id="user_created")
