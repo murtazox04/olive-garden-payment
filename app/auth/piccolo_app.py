@@ -12,11 +12,11 @@ CURRENT_DIRECTORY = os.path.dirname(os.path.abspath(__file__))
 
 
 APP_CONFIG = AppConfig(
-    app_name="api",
+    app_name="auth",
     migrations_folder_path=os.path.join(
         CURRENT_DIRECTORY, "piccolo_migrations"
     ),
-    table_classes=table_finder(modules=["api.tables"], exclude_imported=True),
+    table_classes=table_finder(modules=["auth.tables"], exclude_imported=True),
     migration_dependencies=[],
     commands=[],
 )

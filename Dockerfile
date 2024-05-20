@@ -1,12 +1,26 @@
-FROM python:3.10
+# Use a lightweight Python image
+FROM python:3.10-slim
 
-ENV PYTHONUNBUFFERED 1
+# Set the working directory
+WORKDIR /app
 
-COPY poetry.lock pyproject.toml /src/
+# Install system dependencies and Poetry
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
 
-WORKDIR /src/
-RUN pip install poetry
+# Copy project dependency files
+COPY pyproject.toml poetry.lock ./
 
-RUN poetry install
-COPY . /src/
+# Install Python dependencies
+RUN pip install --no-cache-dir poetry \
+    && poetry install --no-root
+
+# Copy the rest of the application code
+COPY src/ ./src/
+
+# Expose the application's port (if applicable)
 EXPOSE 8000
+
+# Define the command to run the application
+CMD ["poetry", "run", "python", "-m", "app"]

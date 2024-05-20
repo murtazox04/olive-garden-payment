@@ -3,5 +3,6 @@ if __name__ == "__main__":
 
     uvicorn.run(
         "app:app",
-        reload=True
+        # reload=True
+        port=8001
     )

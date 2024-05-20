@@ -1,8 +1,8 @@
 import jwt
-from typing import Optional, Coroutine
+from typing import Optional
 from datetime import datetime, timedelta
 
-from src.api.tables import TokenStorage
+from auth.tables import TokenStorage
 
 
 class JWTTokenService:

@@ -7,8 +7,11 @@ class LoginRequest(BaseModel):
 
 
 class VerificationRequest(BaseModel):
+    code: str
+
+
+class PhoneVerificationResponse(BaseModel):
     phone_verification_token: str
-    verification_code: str
 
 
 class TokenResponse(BaseModel):

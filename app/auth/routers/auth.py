@@ -1,10 +1,9 @@
 from fastapi.security import OAuth2PasswordBearer
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status, Path
 
-from .utils import send_verification_code
-from src.api.services import JWTTokenService
-from src.api.tables import User, TokenStorage, UserConfirmation
-from src.api.dto import LoginRequest, TokenResponse, VerificationRequest
+from auth.services import JWTTokenService
+from auth.tables import User, UserConfirmation, TokenStorage
+from auth.dto import LoginRequest, VerificationRequest, PhoneVerificationResponse, TokenResponse
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
@@ -12,19 +11,23 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 class AuthRouter(APIRouter):
     def __init__(self):
         super().__init__()
-        self.add_api_route("/auth/login", self.login, methods=["POST"])
-        self.add_api_route("/auth/login/{phone_verification_token}/verify", self.verify_phone_number, methods=["POST"])
-        self.add_api_route("/auth/login/{refresh_token}/retry-verify", self.resend_verification_code, methods=["POST"])
-        # self.add_api_route("/auth/logout", self.logout, methods=["POST"])
+        self.tags = ['Authentication']
+        self.add_api_route("/login", self.login, methods=["POST"], response_model=PhoneVerificationResponse, status_code=status.HTTP_201_CREATED)
+        self.add_api_route("/login/{phone_verification_token}/verify", self.verify_phone_number, methods=["POST"], response_model=TokenResponse)
+        self.add_api_route("/login/{refresh_token}/retry-verify", self.resend_verification_code, methods=["POST"], response_model=PhoneVerificationResponse)
+        self.add_api_route("/auth/logout", self.logout, methods=["POST"], response_model=dict, status_code=status.HTTP_200_OK)
 
     async def login(self, request: LoginRequest):
-        user = await User.objects().get_or_create(
+        user, created = await User.objects().get_or_create(
             User.phone_number == request.phone_number,
             defaults={
                 User.username: request.phone_number,
                 User.password: request.telegram_id
             }
         )
+        if not created:
+            user.password = request.telegram_id
+            await user.save()
 
         confirmation_code = await user.create_verify_code()
         # await user.save()
@@ -32,11 +35,10 @@ class AuthRouter(APIRouter):
         # await send_verification_code(confirmation_code, request.phone_number)
 
         phone_verification_token = JWTTokenService.create_phone_verification_token(user.id)
-
         return {"phone_verification_token": phone_verification_token}
 
-    async def verify_phone_number(self, request: VerificationRequest):
-        user_id = await self.get_current_user(request.phone_verification_token)
+    async def verify_phone_number(self, request: VerificationRequest, phone_verification_token: str):
+        user_id = await self.get_current_user(phone_verification_token)
         user = await User.objects().get(User.id == user_id)
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
@@ -54,20 +56,20 @@ class AuthRouter(APIRouter):
 
         access_token = JWTTokenService.create_access_token(user.id)
         refresh_token = JWTTokenService.create_refresh_token(user.id)
-
         return {"access_token": access_token, "refresh_token": refresh_token, "token_type": "bearer"}
 
-    async def resend_verification_code(self, request: VerificationRequest):
-        user_id = await self.get_current_user(request.phone_verification_token)
-        phone_verification_token = JWTTokenService.create_phone_verification_token(user_id)
-        return {"phone_verification_token": phone_verification_token}
+    async def resend_verification_code(self, phone_verification_token: str):
+        user_id = await self.get_current_user(phone_verification_token)
+        verification_token = JWTTokenService.create_phone_verification_token(user_id)
+        return {"phone_verification_token": verification_token}
 
-    # async def logout(self, token: str = Depends(oauth2_scheme)):
-    #     user_id = await self.get_current_user(token)
-    #     if user_id:
-    #         token = await TokenStorage.objects().where(TokenStorage.user_id == user_id).first()
-    #         await token.remove()
-    #     return {"message": "Logged out successfully"}
+    async def logout(self, token: str = Depends(oauth2_scheme)):
+        user_id = await self.get_current_user(token)
+        if user_id:
+            token = await TokenStorage.objects().where(TokenStorage.user_id == user_id).first()
+            if token:
+                await token.remove()
+        return {"message": "Logged out successfully"}
 
     async def get_current_user(self, token: str = Depends(oauth2_scheme)) -> int:
         payload = JWTTokenService.decode_access_token(token)
