@@ -5,7 +5,7 @@ from piccolo.conf.apps import AppRegistry
 
 DB = PostgresEngine(
     config={
-        "database": "olive_garden_auth",
+        "database": "piccolo_project",
         "user": "postgres",
         "password": "1234",
         "host": "localhost",
@@ -14,5 +14,5 @@ DB = PostgresEngine(
 )
 
 APP_REGISTRY = AppRegistry(
-    apps=["auth.piccolo_app"]
+    apps=["core.piccolo_app"]
 )

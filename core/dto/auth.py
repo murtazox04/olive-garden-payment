@@ -10,6 +10,10 @@ class VerificationRequest(BaseModel):
     code: str
 
 
+class RefreshTokenRequest(BaseModel):
+    refresh_token: str
+
+
 class PhoneVerificationResponse(BaseModel):
     phone_verification_token: str
 
@@ -17,4 +21,3 @@ class PhoneVerificationResponse(BaseModel):
 class TokenResponse(BaseModel):
     access_token: str
     refresh_token: str
-    token_type: str

@@ -1,15 +1,14 @@
 from fastapi import FastAPI
 from piccolo.engine import engine_finder
-# from faststream.kafka.fastapi import KafkaRouter
 
-from auth.routers import auth_router, geolocation_router
+from core.routers import auth_router, geolocation_router
 
-# router = KafkaRouter("localhost:9092")
+
 app = FastAPI(
     title="OliveGarden Auth Service",
-    # lifespan=router.lifespan_context
 )
-# app.include_router(router)
+
+
 app.include_router(auth_router, prefix="/api/v1/auth")
 app.include_router(geolocation_router, prefix="/api/v1/user")
 
